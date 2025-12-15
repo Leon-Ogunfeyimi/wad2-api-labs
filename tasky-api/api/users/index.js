@@ -13,41 +13,68 @@ router.get('/', async (req, res) => {
 });
 
 // register(Create)/Authenticate User
-router.post('/', asyncHandler(async (req, res) => {
+router.post(
+  '/',
+  asyncHandler(async (req, res) => {
     try {
-        if (!req.body.username || !req.body.password) {
-            return res.status(400).json({ success: false, msg: 'Username and password are required.' });
-        }
-        if (req.query.action === 'register') {
-            await registerUser(req, res);
-        } else {
-            await authenticateUser(req, res);
-        }
+      // 1. Check username + password are present
+      if (!req.body.username || !req.body.password) {
+        return res.status(400).json({
+          success: false,
+          msg: 'Username and password are required.',
+        });
+      }
+
+      // 2. If action=register → create user
+      if (req.query.action === 'register') {
+        await registerUser(req, res);
+      } else {
+        // 3. Otherwise → authenticate user
+        await authenticateUser(req, res);
+      }
     } catch (error) {
-        // Log the error and return a generic error message
-        console.error(error);
-        res.status(500).json({ success: false, msg: 'Internal server error.' });
+      // 4. If anything blows up, send generic 500
+      console.error(error);
+      res
+        .status(500)
+        .json({ success: false, msg: 'Internal server error.' });
     }
-}));
+  })
+);
+
 async function registerUser(req, res) {
-    // Add input validation logic here
-    await User.create(req.body);
-    res.status(201).json({ success: true, msg: 'User successfully created.' });
+  // Mongoose User model + pre-save hook will hash the password
+  await User.create(req.body);
+  res
+    .status(201)
+    .json({ success: true, msg: 'User successfully created.' });
 }
 
 async function authenticateUser(req, res) {
-    const user = await User.findByUserName(req.body.username);
-    if (!user) {
-        return res.status(401).json({ success: false, msg: 'Authentication failed. User not found.' });
-    }
+  const user = await User.findByUserName(req.body.username);
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      msg: 'Authentication failed. User not found.',
+    });
+  }
 
-    const isMatch = await user.comparePassword(req.body.password);
-    if (isMatch) {
-        const token = jwt.sign({ username: user.username }, process.env.SECRET);
-        res.status(200).json({ success: true, token: 'BEARER ' + token });
-    } else {
-        res.status(401).json({ success: false, msg: 'Wrong password.' });
-    }
+  const isMatch = await user.comparePassword(req.body.password);
+  if (isMatch) {
+    const token = jwt.sign(
+      { username: user.username },
+      process.env.SECRET
+    );
+    res.status(200).json({
+      success: true,
+      token: 'BEARER ' + token,
+    });
+  } else {
+    res
+      .status(401)
+      .json({ success: false, msg: 'Wrong password.' });
+  }
 }
+
 
 export default router;

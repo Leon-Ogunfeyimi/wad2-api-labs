@@ -43,11 +43,22 @@ router.post(
 );
 
 async function registerUser(req, res) {
-  // Mongoose User model + pre-save hook will hash the password
+  const { password } = req.body;
+
+  // Password must be 8+ chars, with a letter, a digit, and a special character
+  const strongPasswordRegex =
+    /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+
+  if (!strongPasswordRegex.test(password)) {
+    return res.status(400).json({
+      success: false,
+      msg: 'Password must be at least 8 characters long and contain a letter, a digit, and a special character.',
+    });
+  }
+
+  // If password is ok, create user as normal
   await User.create(req.body);
-  res
-    .status(201)
-    .json({ success: true, msg: 'User successfully created.' });
+  res.status(201).json({ success: true, msg: 'User successfully created.' });
 }
 
 async function authenticateUser(req, res) {
